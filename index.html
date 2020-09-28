@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>WebRTC Conference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+<body>
+    <div id="videos">
+        <video id="local_video" width="426" height="240" style="background-color: black;" autoplay muted controls></video>
+    </div>
+    <script>
+        var local_video = document.querySelector('#local_video');
+        var local_stream = null;
+        var current_id = "";
+        var connection = null;
+        var ws_uri = "ws://" + location.host + "/ws";
+        //I don't fucking care if you use my turn/stun test credentials!!!
+        var connection_config = {
+            iceServers: [{
+                urls: ["stun:ss-turn1.xirsys.com"]
+            }, 
+            {
+                username: "nDc_obV6zSypEKQTiDtEca5CA6vYZLasLAjIf9VwVXBc54FFpQbv5PvUwili43_0AAAAAF9Jf8FzaXg1MTk=",
+                credential: "a3bd4a9a-e97a-11ea-9bbd-0242ac140004",
+                urls: [
+                    "turn:ss-turn1.xirsys.com:80?transport=udp",
+                    "turn:ss-turn1.xirsys.com:3478?transport=udp",
+                    "turn:ss-turn1.xirsys.com:80?transport=tcp",
+                    "turn:ss-turn1.xirsys.com:3478?transport=tcp",
+                    "turns:ss-turn1.xirsys.com:443?transport=tcp",
+                    "turns:ss-turn1.xirsys.com:5349?transport=tcp"
+                ]
+            }]
+        };
+        var pc_out = null;
+
+        function handleMessage(event) {
+            console.log('The message is: ' + event.data);
+            let data = JSON.parse(event.data);
+            if (data.command == 'init') {
+                current_id = data.current_id;
+            }
+        }
+
+        function handleOnClose() {
+            connection = new WebSocket(ws_uri);
+            connection.onmessage = handleMessage;
+            connection.onclose = handleOnClose;
+        }
+
+        navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(my_stream => {
+            local_stream = my_stream;
+            local_video.srcObject = local_stream;
+
+            connection = new WebSocket(ws_uri);
+            connection.onopen = () => {
+                connection.send(JSON.stringify({
+                    command: "init",
+                    current_id: current_id
+                }));
+            };
+            connection.onmessage = handleMessage;
+            connection.onclose = handleOnClose;
+
+            pc_out = new RTCPeerConnection(connection_config);
+
+            pc_out.onicecandidate = event => {
+                if (event.candidate === null) {
+                    connection.send(JSON.stringify({
+                        command: "send_sdp",
+                        current_id: current_id,
+                        data: pc_out.localDescription.sdp
+                    }));
+                }
+            };
+
+            my_stream.getTracks().forEach(track => pc_out.addTrack(track, my_stream));
+            pc_out.createOffer().then(d => pc_out.setLocalDescription(d)).catch(err => {
+                alert(`An error occurred: ${err}`);
+            });
+
+        }).catch(err => {
+            alert(`An error occurred: ${err}`);
+        });
+
+    </script>
+</body>
+</html>
