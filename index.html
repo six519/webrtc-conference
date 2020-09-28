@@ -40,6 +40,18 @@
             let data = JSON.parse(event.data);
             if (data.command == 'init') {
                 current_id = data.current_id;
+            } else if (data.command == 'send_sdp') {
+                try {
+                    pc_out.setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:data.data}))
+                } catch (e) {
+                    alert(e)
+                }
+            } else if (data.command == 'clients') {
+                let splitted_data = data.data.split(',');
+                for (id of splitted_data) {
+                    if (id != "" && id != current_id) {
+                    }
+                }
             }
         }
 

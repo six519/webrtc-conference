@@ -8,7 +8,10 @@ import (
     "encoding/json"
     "github.com/google/uuid"
     "github.com/pion/webrtc/v2"
+    "github.com/pion/rtcp"
     "sync"
+    "time"
+    "io"
 )
 
 type JSONMessage struct {
@@ -17,8 +20,12 @@ type JSONMessage struct {
     Data string         `json:"data"`
 }
 
-var (
+const (
+    rtcpPLIInterval = time.Second * 3
     SERVER_PORT = "8000"
+)
+
+var (
     websocketUpgrader = websocket.Upgrader{}
     connections = make(map[*websocket.Conn]bool)
     mediaEngine webrtc.MediaEngine
@@ -43,6 +50,8 @@ var (
 
     videoTrackLocks = make(map[string]sync.RWMutex)
     audioTrackLocks = make(map[string]sync.RWMutex)
+	videoTracks = make(map[string]*webrtc.Track)
+	audioTracks = make(map[string]*webrtc.Track)
 )
 
 func showError(err error) {
@@ -99,8 +108,95 @@ func ws(writer http.ResponseWriter, request *http.Request) {
         showError(err)
 
         videoReceivers[msg.CurrentID].OnTrack(func(track *webrtc.Track, rtpReceiver *webrtc.RTPReceiver) {
+            if track.PayloadType() == webrtc.DefaultPayloadTypeVP8 || track.PayloadType() == webrtc.DefaultPayloadTypeVP9 || track.PayloadType() == webrtc.DefaultPayloadTypeH264 {
+                var err error
+                vl := videoTrackLocks[msg.CurrentID]
+                vl.Lock()
+                videoTracks[msg.CurrentID], err = videoReceivers[msg.CurrentID].NewTrack(track.PayloadType(), track.SSRC(), "video", "pion")
+                vl.Unlock()
+                showError(err)
 
+                go func() {
+                    ticker := time.NewTicker(rtcpPLIInterval)
+                    for range ticker.C {
+                        showError(videoReceivers[msg.CurrentID].WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: videoTracks[msg.CurrentID].SSRC()}}))
+                    }
+                }()
+
+                rtpBuf := make([]byte, 1400)
+                for {
+                    i, err := track.Read(rtpBuf)
+                    showError(err)
+                    vl.RLock()
+                    _, err = videoTracks[msg.CurrentID].Write(rtpBuf[:i])
+                    vl.RUnlock()
+
+                    if err != io.ErrClosedPipe {
+                        showError(err)
+                    }
+                }
+            } else {
+                var err error
+                al := audioTrackLocks[msg.CurrentID]
+                al.Lock()
+                audioTracks[msg.CurrentID], err = videoReceivers[msg.CurrentID].NewTrack(track.PayloadType(), track.SSRC(), "audio", "pion")
+                al.Unlock()
+                showError(err)
+
+                rtpBuf := make([]byte, 1400)
+                for {
+                    i, err := track.Read(rtpBuf)
+                    showError(err)
+                    al.RLock()
+                    _, err = audioTracks[msg.CurrentID].Write(rtpBuf[:i])
+                    al.RUnlock()
+                    if err != io.ErrClosedPipe {
+                        showError(err)
+                    }
+                }
+            }
         })
+
+        showError(videoReceivers[msg.CurrentID].SetRemoteDescription(
+        webrtc.SessionDescription{
+            SDP:  msg.Data,
+            Type: webrtc.SDPTypeOffer,
+        }))
+
+        answer, err := videoReceivers[msg.CurrentID].CreateAnswer(nil)
+        showError(err)
+
+        showError(videoReceivers[msg.CurrentID].SetLocalDescription(answer))
+
+        reply := JSONMessage{
+            Command: "send_sdp",
+            CurrentID: msg.CurrentID,
+            Data: answer.SDP,
+        }
+
+        replyMsg, err := json.Marshal(&reply)
+        showError(err)
+        showError(connection.WriteMessage(messageType, []byte(replyMsg)))
+
+        //broadcast to every client connected
+        stringReply := ""
+        for k, _ := range videoReceivers {
+            stringReply += k + ","
+        }
+
+        for connection := range connections {
+
+            reply := JSONMessage{
+                Command: "clients",
+                CurrentID: msg.CurrentID,
+                Data: stringReply,
+            }
+    
+            replyMsg, err := json.Marshal(&reply)
+            showError(err)
+            showError(connection.WriteMessage(messageType, []byte(replyMsg)))
+        }
+
     }
 }
 
