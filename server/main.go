@@ -46,7 +46,7 @@ var (
         SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
     }
     videoReceivers = make(map[string]*webrtc.PeerConnection)
-    videoSenders = make(map[string]*webrtc.PeerConnection)
+    //videoSenders = make(map[string]*webrtc.PeerConnection)
 
     videoTrackLocks = make(map[string]sync.RWMutex)
     audioTrackLocks = make(map[string]sync.RWMutex)
@@ -197,6 +197,55 @@ func ws(writer http.ResponseWriter, request *http.Request) {
             showError(connection.WriteMessage(messageType, []byte(replyMsg)))
         }
 
+    } else if (msg.Command == "send_sdp_in") {
+
+        subSender, err := webrtcApi.NewPeerConnection(connectionConfig)
+        showError(err)
+
+        for {
+            vl := videoTrackLocks[msg.CurrentID]
+            vl.RLock()
+            if videoTracks[msg.CurrentID] == nil {
+                vl.RUnlock()
+                time.Sleep(100 * time.Millisecond)
+            } else {
+                vl.RUnlock()
+                break
+            }
+        }
+
+        vl := videoTrackLocks[msg.CurrentID]
+        vl.RLock()
+        _, err = subSender.AddTrack(videoTracks[msg.CurrentID])
+        vl.RUnlock()
+        showError(err)
+
+        al := audioTrackLocks[msg.CurrentID]
+        al.RLock()
+        _, err = subSender.AddTrack(audioTracks[msg.CurrentID])
+        al.RUnlock()
+        showError(err)
+
+        showError(subSender.SetRemoteDescription(
+        webrtc.SessionDescription{
+            SDP:  msg.Data,
+            Type: webrtc.SDPTypeOffer,
+        }))
+
+        answer, err := subSender.CreateAnswer(nil)
+        showError(err)
+
+        showError(subSender.SetLocalDescription(answer))
+
+        reply := JSONMessage{
+            Command: "send_sdp_in",
+            CurrentID: msg.CurrentID,
+            Data: answer.SDP,
+        }
+
+        replyMsg, err := json.Marshal(&reply)
+        showError(err)
+        showError(connection.WriteMessage(messageType, []byte(replyMsg)))
     }
 }
 

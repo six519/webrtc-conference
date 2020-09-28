@@ -35,6 +35,7 @@
             }]
         };
         var pc_out = null;
+        var pc_ins = {};
 
         function handleMessage(event) {
             console.log('The message is: ' + event.data);
@@ -47,18 +48,51 @@
                 } catch (e) {
                     alert(e)
                 }
+            } else if (data.command == 'send_sdp_in') {
+                try {
+                    pc_ins[data.current_id].setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:data.data}))
+                } catch (e) {
+                    alert(e)
+                }            
             } else if (data.command == 'clients') {
                 let splitted_data = data.data.split(',');
-                for (id of splitted_data) {
+                for (let id of splitted_data) {
                     if (id != "" && id != current_id) {
-                        let this_video = document.createElement('video');
-                        this_video.setAttribute('width', '426');
-                        this_video.setAttribute('height', '240');
-                        this_video.setAttribute('style', 'background-color: black;');
-                        this_video.autoplay = true;
-                        this_video.muted = true;
-                        this_video.controls = true;
-                        videos.appendChild(this_video);
+                        if (!pc_ins.hasOwnProperty(id)) {
+                            let this_video = document.createElement('video');
+                            this_video.setAttribute('id', id);
+                            this_video.setAttribute('width', '426');
+                            this_video.setAttribute('height', '240');
+                            this_video.setAttribute('style', 'background-color: black;');
+                            this_video.autoplay = true;
+                            this_video.muted = true;
+                            this_video.controls = true;
+                            videos.appendChild(this_video);
+
+                            pc_ins[id] = new RTCPeerConnection(connection_config);
+
+                            pc_ins[id].onicecandidate = event => {
+                                if (event.candidate === null) {
+                                    connection.send(JSON.stringify({
+                                        command: "send_sdp_in",
+                                        current_id: id,
+                                        data: pc_ins[id].localDescription.sdp
+                                    }));
+                                }
+                            };
+
+                            pc_ins[id].addTransceiver('audio', {'direction': 'sendrecv'});
+                            pc_ins[id].addTransceiver('video', {'direction': 'sendrecv'});
+
+                            pc_ins[id].createOffer().then(d => pc_ins[id].setLocalDescription(d)).catch(err => {
+                                alert(`An error occurred: ${err}`);
+                            });
+
+                            pc_ins[id].ontrack = function (event) {
+                                let el = document.getElementById(id);
+                                el.srcObject = event.streams[0];
+                            }
+                        }
                     }
                 }
             }
