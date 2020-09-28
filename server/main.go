@@ -12,9 +12,9 @@ import (
 )
 
 type JSONMessage struct {
-    Command string		`json:"command"`
-    CurrentID string	`json:"current_id"`
-    Data string			`json:"data"`
+    Command string      `json:"command"`
+    CurrentID string    `json:"current_id"`
+    Data string         `json:"data"`
 }
 
 var (
