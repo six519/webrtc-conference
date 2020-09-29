@@ -36,6 +36,7 @@
         };
         var pc_out = null;
         var pc_ins = {};
+        var reply_check = {};
 
         function handleMessage(event) {
             console.log('The message is: ' + event.data);
@@ -51,6 +52,7 @@
             } else if (data.command == 'send_sdp_in') {
                 try {
                     pc_ins[data.current_id].setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:data.data}))
+                    reply_check[data.current_id] = true;
                 } catch (e) {
                     alert(e)
                 }            
@@ -73,6 +75,7 @@
 
                             pc_ins[id].onicecandidate = event => {
                                 if (event.candidate === null) {
+                                    reply_check[id] = false;
                                     connection.send(JSON.stringify({
                                         command: "send_sdp_in",
                                         current_id: id,
