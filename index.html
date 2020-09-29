@@ -69,17 +69,9 @@
 
                             pc_ins[id].onicecandidate = event => {
                                 if (event.candidate === null) {
-                                    //reply_check[id] = false;
-                                    /*
-                                    connection.send(JSON.stringify({
-                                        command: "send_sdp_in",
-                                        current_id: id,
-                                        data: pc_ins[id].localDescription.sdp
-                                    }));
-                                    */
-
                                     read_connection = new WebSocket(ws_uri);
                                     read_connection.onopen = () => {
+                                        reply_check[id] = false;
                                         read_connection.send(JSON.stringify({
                                             command: "send_sdp_in",
                                             current_id: id,
