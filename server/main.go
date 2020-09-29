@@ -122,6 +122,17 @@ func ws(writer http.ResponseWriter, request *http.Request) {
                 delete(audioTrackLocks, msg.CurrentID)
 
                 //TODO: broadcast to all connected clients the disconnected msg.CurrentID below
+                reply := JSONMessage{
+                    Command: "disconnected",
+                    CurrentID: msg.CurrentID,
+                }
+                replyMsg, err := json.Marshal(&reply)
+                showError(err)
+
+                for connection := range connections {
+                    showError(connection.WriteMessage(messageType, []byte(replyMsg)))
+                }
+
             }  
         })
 
@@ -213,16 +224,16 @@ func ws(writer http.ResponseWriter, request *http.Request) {
             stringReply += k + ","
         }
 
-        for connection := range connections {
+        reply = JSONMessage{
+            Command: "clients",
+            CurrentID: msg.CurrentID,
+            Data: stringReply,
+        }
 
-            reply := JSONMessage{
-                Command: "clients",
-                CurrentID: msg.CurrentID,
-                Data: stringReply,
-            }
-    
-            replyMsg, err := json.Marshal(&reply)
-            showError(err)
+        replyMsg, err = json.Marshal(&reply)
+        showError(err)
+
+        for connection := range connections {
             showError(connection.WriteMessage(messageType, []byte(replyMsg)))
         }
 

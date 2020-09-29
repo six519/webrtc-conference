@@ -118,6 +118,9 @@
                         }
                     }
                 }
+            } else if (data.command == 'disconnected') {
+                document.getElementById(data.current_id).remove();
+                delete pc_ins[data.current_id];
             }
         }
 
