@@ -22,7 +22,7 @@ type JSONMessage struct {
 
 const (
     rtcpPLIInterval = time.Second * 3
-    SERVER_PORT = "8000"
+    SERVER_PORT = "3000"
 )
 
 var (
