@@ -38,44 +38,36 @@
         var pc_out = null;
         var pc_ins = {};
         var reply_check = {};
-        var running_set_video = false;
 
         function set_video(id) {
-            //if (!running_set_video) {
-                running_set_video = true;
-                read_connection = new WebSocket(ws_uri);
+            read_connection = new WebSocket(ws_uri);
 
-                read_connection.onopen = () => {
+            read_connection.onopen = () => {
+                try {
+                    read_connection.send(JSON.stringify({
+                        command: "send_sdp_in",
+                        current_id: id,
+                        data: pc_ins[id].localDescription.sdp
+                    }));
+                    reply_check[id] = false;
+                } catch(e) {
+                    setTimeout(function(){
+                        set_video(id);
+                    }, 2000);
+                }
+            };
+
+            read_connection.onmessage = event => {
+                let data = JSON.parse(event.data);
+                if (data.command == 'send_sdp_in') {
                     try {
-                        read_connection.send(JSON.stringify({
-                            command: "send_sdp_in",
-                            current_id: id,
-                            data: pc_ins[id].localDescription.sdp
-                        }));
-                        reply_check[id] = false;
-                        running_set_video = false;
-                    } catch(e) {
-                        console.log('ERROR SHIT OCCURRED.. RETRYING SHIT....');
-                        setTimeout(function(){
-                            set_video(id);
-                        }, 2000);
-                    }
-                };
-
-                read_connection.onmessage = event => {
-                    let data = JSON.parse(event.data);
-                    if (data.command == 'send_sdp_in') {
-                        try {
-                            pc_ins[data.current_id].setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:data.data}))
-                            reply_check[data.current_id] = true;
-                        } catch (e) {
-                            alert(e)
-                        }            
-                    } 
-                };
-
-            //}
-
+                        pc_ins[data.current_id].setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:data.data}))
+                        reply_check[data.current_id] = true;
+                    } catch (e) {
+                        alert(e)
+                    }            
+                } 
+            };
         }
 
         function handleMessage(event) {
