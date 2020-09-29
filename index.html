@@ -15,6 +15,7 @@
         var local_stream = null;
         var current_id = "";
         var connection = null;
+        var read_connection = null;
         var ws_uri = "ws://" + location.host + "/ws";
         //I don't fucking care if you use my turn/stun test credentials!!!
         var connection_config = {
@@ -39,7 +40,7 @@
         var reply_check = {};
 
         function handleMessage(event) {
-            console.log('The message is: ' + event.data);
+            //console.log('The message is: ' + event.data);
             let data = JSON.parse(event.data);
             if (data.command == 'init') {
                 current_id = data.current_id;
@@ -49,13 +50,6 @@
                 } catch (e) {
                     alert(e)
                 }
-            } else if (data.command == 'send_sdp_in') {
-                try {
-                    pc_ins[data.current_id].setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:data.data}))
-                    reply_check[data.current_id] = true;
-                } catch (e) {
-                    alert(e)
-                }            
             } else if (data.command == 'clients') {
                 let splitted_data = data.data.split(',');
                 for (let id of splitted_data) {
@@ -75,12 +69,36 @@
 
                             pc_ins[id].onicecandidate = event => {
                                 if (event.candidate === null) {
-                                    reply_check[id] = false;
+                                    //reply_check[id] = false;
+                                    /*
                                     connection.send(JSON.stringify({
                                         command: "send_sdp_in",
                                         current_id: id,
                                         data: pc_ins[id].localDescription.sdp
                                     }));
+                                    */
+
+                                    read_connection = new WebSocket(ws_uri);
+                                    read_connection.onopen = () => {
+                                        read_connection.send(JSON.stringify({
+                                            command: "send_sdp_in",
+                                            current_id: id,
+                                            data: pc_ins[id].localDescription.sdp
+                                        }));
+                                    };
+
+                                    read_connection.onmessage = event => {
+                                        let data = JSON.parse(event.data);
+                                        if (data.command == 'send_sdp_in') {
+                                            try {
+                                                pc_ins[data.current_id].setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:data.data}))
+                                                reply_check[data.current_id] = true;
+                                            } catch (e) {
+                                                alert(e)
+                                            }            
+                                        } 
+                                    };
+
                                 }
                             };
 
