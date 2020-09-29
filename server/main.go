@@ -1,3 +1,6 @@
+/*
+    Thanks to the sample code: https://github.com/pion/example-webrtc-applications/tree/master/sfu-ws
+*/
 package main
 
 import (
