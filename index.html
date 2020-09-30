@@ -39,6 +39,36 @@
         var pc_ins = {};
         var reply_check = {};
 
+        function create_out() {
+            pc_out = new RTCPeerConnection(connection_config);
+
+            pc_out.onicecandidate = event => {
+                if (event.candidate === null) {
+                    set_video_publish(pc_out.localDescription.sdp);
+                }
+            };
+
+            pc_out.onconnectionstatechange = function(event) {
+                switch(pc_out.connectionState) {
+                    case "connected":
+                    break;
+                    case "disconnected":
+                        //reconnect if got disconnected
+                        create_out();
+                    break;
+                    case "failed":
+                    break;
+                    case "closed":
+                    break;
+                }
+            }
+
+            local_stream.getTracks().forEach(track => pc_out.addTrack(track, local_stream));
+            pc_out.createOffer().then(d => pc_out.setLocalDescription(d)).catch(err => {
+                alert(`An error occurred: ${err}`);
+            });
+        }
+
         function set_video_publish(local_description) {
             connection = new WebSocket(ws_uri);
             connection.onopen = () => {
@@ -165,18 +195,7 @@
             connection.onmessage = handleMessage;
             connection.onclose = handleOnClose;
 
-            pc_out = new RTCPeerConnection(connection_config);
-
-            pc_out.onicecandidate = event => {
-                if (event.candidate === null) {
-                    set_video_publish(pc_out.localDescription.sdp);
-                }
-            };
-
-            my_stream.getTracks().forEach(track => pc_out.addTrack(track, my_stream));
-            pc_out.createOffer().then(d => pc_out.setLocalDescription(d)).catch(err => {
-                alert(`An error occurred: ${err}`);
-            });
+            create_out();
 
         }).catch(err => {
             alert(`An error occurred: ${err}`);
