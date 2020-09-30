@@ -63,6 +63,15 @@ func showError(err error) {
     }
 }
 
+func broadcastMessage(reply JSONMessage, messageType int) {
+    replyMsg, err := json.Marshal(&reply)
+    showError(err)
+
+    for connection := range connections {
+        showError(connection.WriteMessage(messageType, []byte(replyMsg)))
+    }
+}
+
 func web(writer http.ResponseWriter, request *http.Request) {
     if request.Method == "GET" {
         temp, _ := template.ParseFiles("../index.html")
@@ -125,13 +134,7 @@ func ws(writer http.ResponseWriter, request *http.Request) {
                     Command: "disconnected",
                     CurrentID: msg.CurrentID,
                 }
-                replyMsg, err := json.Marshal(&reply)
-                showError(err)
-
-                for connection := range connections {
-                    showError(connection.WriteMessage(messageType, []byte(replyMsg)))
-                }
-
+                broadcastMessage(reply, messageType)
             }  
         })
 
@@ -230,12 +233,7 @@ func ws(writer http.ResponseWriter, request *http.Request) {
             Data: stringReply,
         }
 
-        replyMsg, err = json.Marshal(&reply)
-        showError(err)
-
-        for connection := range connections {
-            showError(connection.WriteMessage(messageType, []byte(replyMsg)))
-        }
+        broadcastMessage(reply, messageType)
 
     } else if (msg.Command == "send_sdp_in") {
 
