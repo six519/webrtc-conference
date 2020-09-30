@@ -151,17 +151,18 @@ func ws(writer http.ResponseWriter, request *http.Request) {
                         if (!ok) {
                             break
                         }
-                        if (videoReceivers[msg.CurrentID].ConnectionState() == webrtc.PeerConnectionStateDisconnected || videoReceivers[msg.CurrentID].ConnectionState() == webrtc.PeerConnectionStateClosed) {
+                        err := videoReceivers[msg.CurrentID].WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: videoTracks[msg.CurrentID].SSRC()}})
+
+                        if err != nil {
                             break
                         }
-                        showError(videoReceivers[msg.CurrentID].WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: videoTracks[msg.CurrentID].SSRC()}}))
                     }
                 }()
 
                 rtpBuf := make([]byte, 1400)
                 for {
                     i, err := track.Read(rtpBuf)
-                    if (err != nil && (videoReceivers[msg.CurrentID].ConnectionState() == webrtc.PeerConnectionStateDisconnected || videoReceivers[msg.CurrentID].ConnectionState() == webrtc.PeerConnectionStateClosed)) {
+                    if (err != nil) {
                         break
                     }
                     vl.RLock()
@@ -183,7 +184,7 @@ func ws(writer http.ResponseWriter, request *http.Request) {
                 rtpBuf := make([]byte, 1400)
                 for {
                     i, err := track.Read(rtpBuf)
-                    if (err != nil && (videoReceivers[msg.CurrentID].ConnectionState() == webrtc.PeerConnectionStateDisconnected || videoReceivers[msg.CurrentID].ConnectionState() == webrtc.PeerConnectionStateClosed)) {
+                    if (err != nil) {
                         break
                     }
                     al.RLock()
