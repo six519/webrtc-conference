@@ -41,8 +41,8 @@ var (
             },
             {
                 URLs: []string{"turn:ss-turn1.xirsys.com:80?transport=udp", "turn:ss-turn1.xirsys.com:3478?transport=udp", "turn:ss-turn1.xirsys.com:80?transport=tcp", "turn:ss-turn1.xirsys.com:3478?transport=tcp", "turns:ss-turn1.xirsys.com:443?transport=tcp", "turns:ss-turn1.xirsys.com:5349?transport=tcp"},
-                Username:       "nDc_obV6zSypEKQTiDtEca5CA6vYZLasLAjIf9VwVXBc54FFpQbv5PvUwili43_0AAAAAF9Jf8FzaXg1MTk=",
-                Credential:     "a3bd4a9a-e97a-11ea-9bbd-0242ac140004",
+                Username: "nDc_obV6zSypEKQTiDtEca5CA6vYZLasLAjIf9VwVXBc54FFpQbv5PvUwili43_0AAAAAF9Jf8FzaXg1MTk=",
+                Credential: "a3bd4a9a-e97a-11ea-9bbd-0242ac140004",
                 CredentialType: webrtc.ICECredentialTypePassword,
             },
         },
@@ -53,8 +53,8 @@ var (
 
     videoTrackLocks = make(map[string]sync.RWMutex)
     audioTrackLocks = make(map[string]sync.RWMutex)
-	videoTracks = make(map[string]*webrtc.Track)
-	audioTracks = make(map[string]*webrtc.Track)
+    videoTracks = make(map[string]*webrtc.Track)
+    audioTracks = make(map[string]*webrtc.Track)
 )
 
 func showError(err error) {
@@ -121,7 +121,6 @@ func ws(writer http.ResponseWriter, request *http.Request) {
                 delete(videoTrackLocks, msg.CurrentID)
                 delete(audioTrackLocks, msg.CurrentID)
 
-                //TODO: broadcast to all connected clients the disconnected msg.CurrentID below
                 reply := JSONMessage{
                     Command: "disconnected",
                     CurrentID: msg.CurrentID,
