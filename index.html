@@ -39,6 +39,25 @@
         var pc_ins = {};
         var reply_check = {};
 
+        function set_video_publish(local_description) {
+            connection = new WebSocket(ws_uri);
+            connection.onopen = () => {
+                try {
+                    connection.send(JSON.stringify({
+                        command: "send_sdp",
+                        current_id: current_id,
+                        data: local_description
+                    }));
+                } catch(e) {
+                    setTimeout(function(){
+                        set_video_publish(local_description);
+                    }, 2000);
+                }
+            };
+            connection.onmessage = handleMessage;
+            connection.onclose = handleOnClose;
+        }
+
         function set_video(id) {
             read_connection = new WebSocket(ws_uri);
 
@@ -119,8 +138,10 @@
                     }
                 }
             } else if (data.command == 'disconnected') {
-                document.getElementById(data.current_id).remove();
-                delete pc_ins[data.current_id];
+                try {
+                    document.getElementById(data.current_id).remove();
+                    delete pc_ins[data.current_id];
+                }catch(e) {}
             }
         }
 
@@ -148,11 +169,7 @@
 
             pc_out.onicecandidate = event => {
                 if (event.candidate === null) {
-                    connection.send(JSON.stringify({
-                        command: "send_sdp",
-                        current_id: current_id,
-                        data: pc_out.localDescription.sdp
-                    }));
+                    set_video_publish(pc_out.localDescription.sdp);
                 }
             };
 
