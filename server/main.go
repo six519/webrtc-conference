@@ -72,9 +72,33 @@ func broadcastMessage(reply JSONMessage, messageType int) {
     }
 }
 
-func web(writer http.ResponseWriter, request *http.Request) {
+func cleanup(CurrentID string, messageType int) {
+    fmt.Println("Cleaning up...")
+    //cleaning up shits
+    delete(audioTracks, CurrentID)
+    delete(videoTracks, CurrentID)
+    videoReceivers[CurrentID].Close()
+    delete(videoReceivers, CurrentID)
+    delete(videoTrackLocks, CurrentID)
+    delete(audioTrackLocks, CurrentID)
+
+    reply := JSONMessage{
+        Command: "disconnected",
+        CurrentID: CurrentID,
+    }
+    broadcastMessage(reply, messageType)
+}
+
+func index(writer http.ResponseWriter, request *http.Request) {
     if request.Method == "GET" {
         temp, _ := template.ParseFiles("../index.html")
+        showError(temp.Execute(writer, nil))
+    }
+}
+
+func blank(writer http.ResponseWriter, request *http.Request) {
+    if request.Method == "GET" {
+        temp, _ := template.ParseFiles("../blank.html")
         showError(temp.Execute(writer, nil))
     }
 }
@@ -107,6 +131,8 @@ func ws(writer http.ResponseWriter, request *http.Request) {
         replyMsg, err := json.Marshal(&reply)
         showError(err)
         showError(connection.WriteMessage(messageType, []byte(replyMsg)))
+    } else if (msg.Command == "disconnect") {
+        cleanup(msg.CurrentID, messageType)
     } else if (msg.Command == "send_sdp") {
         videoReceivers[msg.CurrentID], err = webrtcApi.NewPeerConnection(connectionConfig)
         videoTrackLocks[msg.CurrentID] = sync.RWMutex{}
@@ -121,20 +147,7 @@ func ws(writer http.ResponseWriter, request *http.Request) {
 
         videoReceivers[msg.CurrentID].OnConnectionStateChange(func(currentState webrtc.PeerConnectionState){
             if (currentState == webrtc.PeerConnectionStateDisconnected) {
-                fmt.Println("Cleaning up...")
-                //cleaning up shits
-                delete(audioTracks, msg.CurrentID)
-                delete(videoTracks, msg.CurrentID)
-                videoReceivers[msg.CurrentID].Close()
-                delete(videoReceivers, msg.CurrentID)
-                delete(videoTrackLocks, msg.CurrentID)
-                delete(audioTrackLocks, msg.CurrentID)
-
-                reply := JSONMessage{
-                    Command: "disconnected",
-                    CurrentID: msg.CurrentID,
-                }
-                broadcastMessage(reply, messageType)
+                cleanup(msg.CurrentID, messageType)
             }  
         })
 
@@ -297,7 +310,8 @@ func main() {
     mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
     webrtcApi = webrtc.NewAPI(webrtc.WithMediaEngine(mediaEngine))
 
-    http.HandleFunc("/", web)
+    http.HandleFunc("/", index)
+    http.HandleFunc("/blank", blank)
     http.HandleFunc("/ws", ws)
 
     fmt.Println("Listening at port: " + SERVER_PORT)

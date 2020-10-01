@@ -6,6 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
 <body>
+    <div>
+        <button onclick="disconnectNow(this)">Disconnect</button>
+        <br /><br />
+    </div>
     <div id="videos">
         <video id="local_video" width="426" height="240" style="background-color: black;" autoplay muted controls></video>
     </div>
@@ -17,6 +21,7 @@
         var connection = null;
         var read_connection = null;
         var ws_uri = "ws://" + location.host + "/ws";
+        var got_sdp = false;
         //I don't fucking care if you use my turn/stun test credentials!!!
         var connection_config = {
             iceServers: [{
@@ -39,6 +44,17 @@
         var pc_ins = {};
         var reply_check = {};
 
+        function disconnectNow(element) {
+            if (got_sdp) {
+                element.disabled = true;
+                connection.send(JSON.stringify({
+                    command: "disconnect",
+                    current_id: current_id
+                }));
+                document.location.href = '/blank';
+            }
+        }
+
         function create_out() {
             pc_out = new RTCPeerConnection(connection_config);
 
@@ -54,6 +70,7 @@
                     break;
                     case "disconnected":
                         //reconnect if got disconnected
+                        got_sdp = false;
                         create_out();
                     break;
                     case "failed":
@@ -127,6 +144,7 @@
             } else if (data.command == 'send_sdp') {
                 try {
                     pc_out.setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:data.data}))
+                    got_sdp = true;
                 } catch (e) {
                     alert(e)
                 }
