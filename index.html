@@ -22,8 +22,8 @@
         var read_connection = null;
         var ws_uri = "ws://" + location.host + "/ws";
         var got_sdp = false;
-        var video_enabled = false;
-        var audio_enabled = false;
+        var video_enabled = true;
+        var audio_enabled = true;
         //I don't fucking care if you use my turn/stun test credentials!!!
         var connection_config = {
             iceServers: [{
