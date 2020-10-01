@@ -7,11 +7,11 @@
   </head>
 <body>
     <div>
-        <button onclick="disconnectNow(this)">Disconnect</button>
+        <button onclick="disconnectNow(this)">Disconnect</button> <button onclick="videoControl(this)">Video On</button> <button onclick="audioControl(this)">Audio On</button>
         <br /><br />
     </div>
     <div id="videos">
-        <video id="local_video" width="426" height="240" style="background-color: black;" autoplay muted controls></video>
+        <video id="local_video" width="426" height="240" style="background-color: black;" autoplay muted></video>
     </div>
     <script>
         var local_video = document.querySelector('#local_video');
@@ -22,6 +22,8 @@
         var read_connection = null;
         var ws_uri = "ws://" + location.host + "/ws";
         var got_sdp = false;
+        var video_enabled = false;
+        var audio_enabled = false;
         //I don't fucking care if you use my turn/stun test credentials!!!
         var connection_config = {
             iceServers: [{
@@ -43,6 +45,36 @@
         var pc_out = null;
         var pc_ins = {};
         var reply_check = {};
+
+        function videoControl(element) {
+            if (got_sdp) {
+                if (video_enabled) {
+                    video_enabled = false;
+                    local_video.pause();
+                    local_stream.getVideoTracks()[0].enabled = false;
+                    element.innerText = 'Video Off';
+                } else {
+                    video_enabled = true;
+                    local_video.play();
+                    local_stream.getVideoTracks()[0].enabled = true;
+                    element.innerText = 'Video On';
+                }
+            }
+        }
+
+        function audioControl(element) {
+            if (got_sdp) {
+                if (audio_enabled) {
+                    audio_enabled = false;
+                    local_stream.getAudioTracks()[0].enabled = false;
+                    element.innerText = 'Audio Off';
+                } else {
+                    audio_enabled = true;
+                    local_stream.getAudioTracks()[0].enabled = true;
+                    element.innerText = 'Audio On';
+                }
+            }
+        }
 
         function disconnectNow(element) {
             if (got_sdp) {
@@ -159,8 +191,8 @@
                             this_video.setAttribute('height', '240');
                             this_video.setAttribute('style', 'background-color: black;');
                             this_video.autoplay = true;
-                            this_video.muted = true;
-                            this_video.controls = true;
+                            //this_video.muted = true;
+                            //this_video.controls = true;
                             videos.appendChild(this_video);
 
                             pc_ins[id] = new RTCPeerConnection(connection_config);
