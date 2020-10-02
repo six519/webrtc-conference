@@ -8,7 +8,6 @@ import (
     "net/http"
     "fmt"
     "github.com/gorilla/websocket"
-    "encoding/json"
     "github.com/google/uuid"
     "github.com/pion/webrtc/v2"
     "github.com/pion/rtcp"
@@ -63,16 +62,13 @@ func showError(err error) {
     }
 }
 
-func broadcastMessage(reply JSONMessage, messageType int) {
-    replyMsg, err := json.Marshal(&reply)
-    showError(err)
-
+func broadcastMessage(reply JSONMessage) {
     for connection := range connections {
-        showError(connection.WriteMessage(messageType, []byte(replyMsg)))
+        showError(connection.WriteJSON(&reply))
     }
 }
 
-func cleanup(CurrentID string, messageType int) {
+func cleanup(CurrentID string) {
     fmt.Println("Cleaning up...")
     //cleaning up shits
     delete(audioTracks, CurrentID)
@@ -86,7 +82,7 @@ func cleanup(CurrentID string, messageType int) {
         Command: "disconnected",
         CurrentID: CurrentID,
     }
-    broadcastMessage(reply, messageType)
+    broadcastMessage(reply)
 }
 
 func index(writer http.ResponseWriter, request *http.Request) {
@@ -112,14 +108,9 @@ func ws(writer http.ResponseWriter, request *http.Request) {
     }()
 
     connections[connection] = true
-
-    messageType, jsonMessage, err := connection.ReadMessage()
-    showError(err)
-
-    //fmt.Println("The message is:" + string(jsonMessage))
-
     msg := JSONMessage{}
-    json.Unmarshal(jsonMessage, &msg)
+
+    showError(connection.ReadJSON(&msg))
 
     if (msg.Command == "init" && msg.CurrentID == "") {
         thisId := uuid.New().String()
@@ -128,11 +119,9 @@ func ws(writer http.ResponseWriter, request *http.Request) {
             CurrentID: thisId,
         }
 
-        replyMsg, err := json.Marshal(&reply)
-        showError(err)
-        showError(connection.WriteMessage(messageType, []byte(replyMsg)))
+        showError(connection.WriteJSON(&reply))
     } else if (msg.Command == "disconnect") {
-        cleanup(msg.CurrentID, messageType)
+        cleanup(msg.CurrentID)
     } else if (msg.Command == "send_sdp") {
         videoReceivers[msg.CurrentID], err = webrtcApi.NewPeerConnection(connectionConfig)
         videoTrackLocks[msg.CurrentID] = sync.RWMutex{}
@@ -147,7 +136,7 @@ func ws(writer http.ResponseWriter, request *http.Request) {
 
         videoReceivers[msg.CurrentID].OnConnectionStateChange(func(currentState webrtc.PeerConnectionState){
             if (currentState == webrtc.PeerConnectionStateDisconnected) {
-                cleanup(msg.CurrentID, messageType)
+                cleanup(msg.CurrentID)
             }  
         })
 
@@ -229,10 +218,7 @@ func ws(writer http.ResponseWriter, request *http.Request) {
             CurrentID: msg.CurrentID,
             Data: answer.SDP,
         }
-
-        replyMsg, err := json.Marshal(&reply)
-        showError(err)
-        showError(connection.WriteMessage(messageType, []byte(replyMsg)))
+        showError(connection.WriteJSON(&reply))
 
         //broadcast to every client connected
         stringReply := ""
@@ -246,7 +232,7 @@ func ws(writer http.ResponseWriter, request *http.Request) {
             Data: stringReply,
         }
 
-        broadcastMessage(reply, messageType)
+        broadcastMessage(reply)
 
     } else if (msg.Command == "send_sdp_in") {
 
@@ -293,10 +279,7 @@ func ws(writer http.ResponseWriter, request *http.Request) {
             CurrentID: msg.CurrentID,
             Data: answer.SDP,
         }
-
-        replyMsg, err := json.Marshal(&reply)
-        showError(err)
-        showError(connection.WriteMessage(messageType, []byte(replyMsg)))
+        showError(connection.WriteJSON(&reply))
     }
 }
 
