@@ -142,6 +142,7 @@ func ws(writer http.ResponseWriter, request *http.Request) {
         })
 
         videoReceivers[msg.CurrentID].OnTrack(func(track *webrtc.Track, rtpReceiver *webrtc.RTPReceiver) {
+            defer gotFatalError()
             if track.PayloadType() == webrtc.DefaultPayloadTypeVP8 || track.PayloadType() == webrtc.DefaultPayloadTypeVP9 || track.PayloadType() == webrtc.DefaultPayloadTypeH264 {
                 var err error
                 vl := videoTrackLocks[msg.CurrentID]
@@ -289,7 +290,6 @@ func gotFatalError() {
 }
 
 func main() {
-    defer gotFatalError()
     mediaEngine = webrtc.MediaEngine{}
 
     //supported video codec
