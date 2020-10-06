@@ -142,7 +142,11 @@ func ws(writer http.ResponseWriter, request *http.Request) {
         })
 
         videoReceivers[msg.CurrentID].OnTrack(func(track *webrtc.Track, rtpReceiver *webrtc.RTPReceiver) {
-            defer gotFatalError()
+
+            defer func() {
+                videoReceivers[msg.CurrentID].Close()
+            }()
+
             if track.PayloadType() == webrtc.DefaultPayloadTypeVP8 || track.PayloadType() == webrtc.DefaultPayloadTypeVP9 || track.PayloadType() == webrtc.DefaultPayloadTypeH264 {
                 var err error
                 vl := videoTrackLocks[msg.CurrentID]
@@ -283,10 +287,6 @@ func ws(writer http.ResponseWriter, request *http.Request) {
         }
         showError(connection.WriteJSON(&reply))
     }
-}
-
-func gotFatalError() {
-    fmt.Println("Got FATAL ERROR....")
 }
 
 func main() {
