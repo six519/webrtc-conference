@@ -284,8 +284,12 @@ func ws(writer http.ResponseWriter, request *http.Request) {
     }
 }
 
-func main() {
+func gotFatalError() {
+    fmt.Println("Got FATAL ERROR....")
+}
 
+func main() {
+    defer gotFatalError()
     mediaEngine = webrtc.MediaEngine{}
 
     //supported video codec
