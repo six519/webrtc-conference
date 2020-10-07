@@ -36,12 +36,12 @@ var (
     connectionConfig = webrtc.Configuration{
         ICEServers: []webrtc.ICEServer{
             {
-                URLs: []string{"stun:ss-turn1.xirsys.com"},
+                URLs: []string{"stun:ss-turn2.xirsys.com"},
             },
             {
-                URLs: []string{"turn:ss-turn1.xirsys.com:80?transport=udp", "turn:ss-turn1.xirsys.com:3478?transport=udp", "turn:ss-turn1.xirsys.com:80?transport=tcp", "turn:ss-turn1.xirsys.com:3478?transport=tcp", "turns:ss-turn1.xirsys.com:443?transport=tcp", "turns:ss-turn1.xirsys.com:5349?transport=tcp"},
-                Username: "nDc_obV6zSypEKQTiDtEca5CA6vYZLasLAjIf9VwVXBc54FFpQbv5PvUwili43_0AAAAAF9Jf8FzaXg1MTk=",
-                Credential: "a3bd4a9a-e97a-11ea-9bbd-0242ac140004",
+                URLs: []string{"turn:ss-turn1.xirsys.com:80?transport=udp", "turn:ss-turn2.xirsys.com:80?transport=udp", "turn:ss-turn2.xirsys.com:3478?transport=udp", "turn:ss-turn2.xirsys.com:80?transport=tcp", "turn:ss-turn2.xirsys.com:3478?transport=tcp", "turns:ss-turn2.xirsys.com:443?transport=tcp", "turns:ss-turn2.xirsys.com:5349?transport=tcp"},
+                Username: "XPuBFcTtxp7gR33zEmM1wG3QQwCCpb6E8wE18XjAwBKGTUx3B4igdYGtJtiy1V7fAAAAAF99ZtpzaXg1MTky",
+                Credential: "5e296a18-086a-11eb-89b1-0242ac140004",
                 CredentialType: webrtc.ICECredentialTypePassword,
             },
         },
