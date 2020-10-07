@@ -100,6 +100,13 @@ func blank(writer http.ResponseWriter, request *http.Request) {
     }
 }
 
+func tryClose(thisID string) {
+    defer func ()  {
+        fmt.Println("FATAL error occured...") 
+    }()
+    videoReceivers[thisID].Close()
+}
+
 func ws(writer http.ResponseWriter, request *http.Request) {
     connection, err := websocketUpgrader.Upgrade(writer, request, nil)
     showError(err)
@@ -144,7 +151,7 @@ func ws(writer http.ResponseWriter, request *http.Request) {
         videoReceivers[msg.CurrentID].OnTrack(func(track *webrtc.Track, rtpReceiver *webrtc.RTPReceiver) {
 
             defer func() {
-                videoReceivers[msg.CurrentID].Close()
+                tryClose(msg.CurrentID)
             }()
 
             if track.PayloadType() == webrtc.DefaultPayloadTypeVP8 || track.PayloadType() == webrtc.DefaultPayloadTypeVP9 || track.PayloadType() == webrtc.DefaultPayloadTypeH264 {
